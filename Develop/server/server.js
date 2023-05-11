@@ -1,14 +1,22 @@
 const express = require('express');
-const { ApolloServer } = require('apollo-server-express');
+const { ApolloServer, AuthenticationError } = require('apollo-server-express');
 const { typeDefs, resolvers } = require('./schema')
 const db = require('./config/connection');
+const authMiddleware = require('./auth');
 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const server = new ApolloServer({
   typeDefs,
-  resolvers
+  resolvers,
+  context: ({ req }) => {
+    const context = {
+      req,
+      user: null
+    };
+    return authMiddleware(context);
+  },
 });
 
 server.applyMiddleware({ app });
@@ -16,15 +24,6 @@ server.applyMiddleware({ app });
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-});
-
-// if we're in production, serve client/build as static assets
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/build')));
-}
-
 
 db.once('open', () => {
   app.listen(PORT, () => console.log(`🌍 Now listening on localhost:${PORT}`));
